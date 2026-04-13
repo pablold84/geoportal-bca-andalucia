@@ -1,0 +1,36 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - develop-andalucia
+      - main-andalucia
+  pull_request:
+    branches:
+      - main-andalucia
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Run unit tests
+        env:
+          SECRET_KEY: test-secret-key-for-ci-only-32chars
+          COOKIE_SECURE: "false"
+          COOKIE_SAMESITE: "lax"
+        run: |
+          cd backend
+          pytest tests/test_security.py -v --tb=short

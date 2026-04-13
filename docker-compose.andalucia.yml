@@ -1,0 +1,82 @@
+services:
+
+  postgis-andalucia:
+    image: postgis/postgis:16-3.4
+    container_name: postgis-andalucia
+    restart: always
+    environment:
+      POSTGRES_DB: geoportal_andalucia_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data_andalucia:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d
+    networks:
+      - geoportal_network
+
+  postgis-config:
+    image: postgis/postgis:16-3.4
+    container_name: postgis-config
+    restart: always
+    environment:
+      POSTGRES_DB: geoportal_config
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_data_config:/var/lib/postgresql/data
+      - ./db-config:/docker-entrypoint-initdb.d
+    networks:
+      - geoportal_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend-andalucia
+    restart: always
+    depends_on:
+      - postgis-andalucia
+      - postgis-config
+    env_file:
+      - ./backend/.env.andalucia
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./dev-data/fotos:/app/fotos:ro
+      - ./dev-data/uploads:/app/uploads
+    networks:
+      - geoportal_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: frontend-andalucia
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - REACT_APP_API_URL=http://localhost:8000/api
+    networks:
+      - geoportal_network
+
+volumes:
+  postgres_data_andalucia:
+  postgres_data_config:
+
+networks:
+  geoportal_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.200.0/24
